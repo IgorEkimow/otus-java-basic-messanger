@@ -43,4 +43,22 @@ public class Server {
             c.sendMsg(message);
         }
     }
+
+    public void sendPrivateMsg(ClientHandler from, String to, String message) {
+        boolean isFound = false;
+
+        for(ClientHandler client : clients) {
+            if(client.getUsername().equals(to)) {
+                client.sendMsg("[Личное сообщение от " + from.getUsername() + "]: " + message);
+                from.sendMsg("[Личное сообщение для " + to + "]: " + message);
+                isFound = true;
+
+                break;
+            }
+        }
+
+        if(!isFound) {
+            from.sendMsg("Пользователь с ником '" + to + "' не найден в чате");
+        }
+    }
 }
