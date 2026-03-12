@@ -45,6 +45,15 @@ public class Client {
                 }
             }).start();
 
+            System.out.println("Добро пожаловать в чат!");
+            System.out.println("=======================================================");
+            System.out.println("Доступные команды:");
+            System.out.println("-------------------------------------------------------");
+            System.out.println("Обычный ввод - общее сообщение всем участникам чата");
+            System.out.println("/w никнейм сообщение - личное сообщение участнику чата");
+            System.out.println("/exit - выход из чата");
+            System.out.println("-------------------------------------------------------");
+
             while (true) {
                 String message = sc.nextLine();
                 out.writeUTF(message);
