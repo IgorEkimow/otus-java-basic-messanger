@@ -9,10 +9,12 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class Server {
     private final int port;
     private List<ClientHandler> clients;
+    private AuthenticatedProvider authenticatedProvider;
 
     public Server(int port) {
         this.port = port;
-        clients = new CopyOnWriteArrayList<>();
+        this.clients = new CopyOnWriteArrayList<>();
+        this.authenticatedProvider = new InMemoryAuthenticatedProvider(this);
     }
 
     public void start() {
@@ -21,7 +23,7 @@ public class Server {
 
             while (true) {
                 Socket socket = serverSocket.accept();
-                subscribe(new ClientHandler(this, socket));
+                new ClientHandler(this, socket);
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -29,18 +31,18 @@ public class Server {
     }
 
     public void subscribe(ClientHandler clientHandler) {
-        broadcastMessage("Подключился пользователь " + clientHandler.getUsername());
+        broadcastMessage("Admin", "Подключился пользователь " + clientHandler.getUsername());
         clients.add(clientHandler);
     }
 
     public void unsubscribe(ClientHandler clientHandler) {
-        broadcastMessage("Пользователь " + clientHandler.getUsername() + " покинул чат");
+        broadcastMessage("Admin", "Пользователь " + clientHandler.getUsername() + " покинул чат");
         clients.remove(clientHandler);
     }
 
-    public void broadcastMessage(String message) {
+    public void broadcastMessage(String sender, String message) {
         for(ClientHandler c : clients) {
-            c.sendMsg(message);
+            c.sendMsg(ConsoleColors.PURPLE_BOLD + sender + ": " + ConsoleColors.CYAN + message + ConsoleColors.RESET);
         }
     }
 
@@ -60,5 +62,19 @@ public class Server {
         if(!isFound) {
             from.sendMsg("Пользователь с ником '" + to + "' не найден в чате");
         }
+    }
+
+    public boolean isUsernameBusy(String username){
+        for (ClientHandler c : clients) {
+            if (c.getUsername().equals(username)){
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public AuthenticatedProvider getAuthenticatedProvider() {
+        return authenticatedProvider;
     }
 }

@@ -11,6 +11,7 @@ public class ClientHandler {
     private DataInputStream in;
     private DataOutputStream out;
     private String username;
+    private boolean isAuthenticate;
 
     public ClientHandler(Server server, Socket socket) throws IOException {
         this.server = server;
@@ -18,30 +19,74 @@ public class ClientHandler {
         this.in = new DataInputStream(socket.getInputStream());
         this.out = new DataOutputStream(socket.getOutputStream());
         System.out.println("Client connected, port: " + socket.getPort());
-        username = "user" + socket.getPort();
-        sendMsg("Вы подключились под ником: " + username);
 
         new Thread(() -> {
             try {
-                while (true) {
+                while (!isAuthenticate) {
+                    sendMsg("Перед работой с чатом необходимо выполнить аутентификацию: " + ConsoleColors.GREEN_BOLD + "/auth login password\n" + ConsoleColors.RESET
+                            + "или зарегистрироваться: " + ConsoleColors.GREEN_BOLD + "/reg login password username" + ConsoleColors.RESET);
+
                     String message = in.readUTF();
 
                     if(message.startsWith("/")) {
                         if(message.equals("/exit")) {
                             sendMsg("/exitok");
-
                             break;
-                        } else if(message.startsWith("/w ")) {
-                            String[] parts = message.split(" ", 3);
+                        }
 
-                            if(parts.length >= 3) {
-                                String nickname = parts[1];
-                                String privateMessage = parts[2];
-                                server.sendPrivateMsg(this, nickname, privateMessage);
+                        if(message.startsWith("/auth")) {
+                            String[] token = message.trim().split(" ");
+
+                            if(token.length != 3) {
+                                sendMsg(ConsoleColors.YELLOW + "Неверный формат команды /auth" + ConsoleColors.RESET);
+                                continue;
+                            }
+
+                            if(server.getAuthenticatedProvider().authenticate(this, token[1], token[2])) {
+                                isAuthenticate = true;
+                                break;
+                            }
+
+                            continue;
+                        }
+
+                        if(message.startsWith("/reg")) {
+                            String[] token = message.trim().split(" ");
+
+                            if(token.length != 4) {
+                                sendMsg(ConsoleColors.YELLOW + "Неверный формат команды /reg" + ConsoleColors.RESET);
+                                continue;
+                            }
+
+                            if(server.getAuthenticatedProvider().register(this, token[1], token[2], token[3])) {
+                                isAuthenticate = true;
+                                break;
                             }
                         }
-                    } else {
-                        server.broadcastMessage(username + ": " + message);
+                    }
+                }
+
+                if(isAuthenticate) {
+                    while (true) {
+                        String message = in.readUTF();
+
+                        if(message.startsWith("/")) {
+                            if(message.equals("/exit")) {
+                                sendMsg("/exitok");
+
+                                break;
+                            } else if(message.startsWith("/w ")) {
+                                String[] parts = message.split(" ", 3);
+
+                                if(parts.length >= 3) {
+                                    String nickname = parts[1];
+                                    String privateMessage = parts[2];
+                                    server.sendPrivateMsg(this, nickname, privateMessage);
+                                }
+                            }
+                        } else {
+                            server.broadcastMessage(username, message);
+                        }
                     }
                 }
             } catch (IOException e) {
@@ -70,7 +115,7 @@ public class ClientHandler {
 
     private void disconnect() {
         server.unsubscribe(this);
-        System.out.println("Client disconnected, port: " + socket.getPort());
+        System.out.println("Client disconnected, username: " + username);
 
         try {
             if(in != null) {
