@@ -11,6 +11,7 @@ public class ClientHandler {
     private DataInputStream in;
     private DataOutputStream out;
     private String username;
+    private UserRole role;
     private boolean isAuthenticate;
 
     public ClientHandler(Server server, Socket socket) throws IOException {
@@ -67,6 +68,12 @@ public class ClientHandler {
                 }
 
                 if(isAuthenticate) {
+                    if (role == UserRole.ADMIN) {
+                        sendMsg("-----------------------------------------------------------------------------------------");
+                        sendMsg(ConsoleColors.RED_BOLD + "/kick username - удалить пользователя из чата (только для пользователей с ролью ADMIN)" + ConsoleColors.RESET);
+                        sendMsg("-----------------------------------------------------------------------------------------");
+                    }
+
                     while (true) {
                         String message = in.readUTF();
 
@@ -82,6 +89,19 @@ public class ClientHandler {
                                     String nickname = parts[1];
                                     String privateMessage = parts[2];
                                     server.sendPrivateMsg(this, nickname, privateMessage);
+                                }
+                            } else if(message.startsWith("/kick ")) {
+                                if (role == UserRole.ADMIN) {
+                                    String[] parts = message.split(" ", 2);
+
+                                    if (parts.length == 2) {
+                                        String usernameToKick = parts[1];
+                                        server.kickUser(this, usernameToKick);
+                                    } else {
+                                        sendMsg("Выполнена команда: /kick username");
+                                    }
+                                } else {
+                                    sendMsg("У вас не достаточно прав для использования этой команды");
                                 }
                             }
                         } else {
@@ -113,8 +133,15 @@ public class ClientHandler {
         this.username = username;
     }
 
-    private void disconnect() {
-        server.unsubscribe(this);
+    public UserRole getRole() {
+        return role;
+    }
+
+    public void setRole(UserRole role) {
+        this.role = role;
+    }
+
+    public void disconnect() {
         System.out.println("Client disconnected, username: " + username);
 
         try {
