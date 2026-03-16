@@ -8,11 +8,13 @@ public class InMemoryAuthenticatedProvider implements AuthenticatedProvider {
         private String login;
         private String password;
         private String username;
+        private UserRole role;
 
-        public User(String login, String password, String username) {
+        public User(String login, String password, String username, UserRole role) {
             this.login = login;
             this.password = password;
             this.username = username;
+            this.role = role;
         }
     }
 
@@ -22,9 +24,10 @@ public class InMemoryAuthenticatedProvider implements AuthenticatedProvider {
     public InMemoryAuthenticatedProvider(Server server) {
         this.server = server;
         this.users = new CopyOnWriteArrayList<>();
-        this.users.add(new User("qwe", "qwe", "qwe1"));
-        this.users.add(new User("asd", "asd", "asd1"));
-        this.users.add(new User("zxc", "zxc", "zxc1"));
+        this.users.add(new User("admin", "admin", "admin", UserRole.ADMIN));
+        this.users.add(new User("user1", "user1", "user1", UserRole.USER));
+        this.users.add(new User("user2", "user2", "user2", UserRole.USER));
+        this.users.add(new User("user3", "user3", "user3", UserRole.USER));
     }
 
     @Override
@@ -32,10 +35,10 @@ public class InMemoryAuthenticatedProvider implements AuthenticatedProvider {
         System.out.println("Сервер аутентификации запущен в режиме InMemory");
     }
 
-    private String getUsernameByLoginAndPassword(String login, String password) {
-        for (User u : users) {
-            if (u.login.equals(login) && u.password.equals(password)) {
-                return u.username;
+    private User getUserByLoginAndPassword(String login, String password) {
+        for (User user : users) {
+            if (user.login.equals(login) && user.password.equals(password)) {
+                return user;
             }
         }
 
@@ -43,8 +46,8 @@ public class InMemoryAuthenticatedProvider implements AuthenticatedProvider {
     }
 
     private boolean isLoginAlreadyExists(String login) {
-        for (User u : users) {
-            if (u.login.equals(login)) {
+        for (User user : users) {
+            if (user.login.equals(login)) {
                 return true;
             }
         }
@@ -53,8 +56,8 @@ public class InMemoryAuthenticatedProvider implements AuthenticatedProvider {
     }
 
     private boolean isUsernameAlreadyExists(String username) {
-        for (User u : users) {
-            if (u.username.equals(username)) {
+        for (User user : users) {
+            if (user.username.equals(username)) {
                 return true;
             }
         }
@@ -64,22 +67,23 @@ public class InMemoryAuthenticatedProvider implements AuthenticatedProvider {
 
     @Override
     public boolean authenticate(ClientHandler clientHandler, String login, String password) {
-        String authUsername = getUsernameByLoginAndPassword(login, password);
+        User user = getUserByLoginAndPassword(login, password);
 
-        if (authUsername == null) {
+        if (user == null) {
             clientHandler.sendMsg("Некоректный логин / пароль");
             return false;
         }
 
-        if (server.isUsernameBusy(authUsername)) {
+        if (server.isUsernameBusy(user.username)) {
             clientHandler.sendMsg("Указанная учетная запись уже занята");
             return false;
         }
 
-        clientHandler.setUsername(authUsername);
-        clientHandler.sendMsg("Вы подключились под ником: " + authUsername);
+        clientHandler.setUsername(user.username);
+        clientHandler.setRole(user.role);
+        clientHandler.sendMsg("Вы подключились под ником: " + user.username + " (роль: " + user.role + ")");
         server.subscribe(clientHandler);
-        clientHandler.sendMsg("/authok " + authUsername);
+        clientHandler.sendMsg("/authok " + user.username);
 
         return true;
     }
@@ -106,9 +110,10 @@ public class InMemoryAuthenticatedProvider implements AuthenticatedProvider {
             return false;
         }
 
-        users.add(new User(login, password, username));
+        users.add(new User(login, password, username, UserRole.USER));
         clientHandler.setUsername(username);
-        clientHandler.sendMsg("Вы успешно зарегистрировались и подключились под ником: " + username);
+        clientHandler.setRole(UserRole.USER);
+        clientHandler.sendMsg("Вы успешно зарегистрировались и подключились под ником: " + username + " (роль: USER)");
         server.subscribe(clientHandler);
         clientHandler.sendMsg("/regok " + username);
 

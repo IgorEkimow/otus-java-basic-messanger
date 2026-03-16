@@ -31,12 +31,12 @@ public class Server {
     }
 
     public void subscribe(ClientHandler clientHandler) {
-        broadcastMessage("Admin", "Подключился пользователь " + clientHandler.getUsername());
+        broadcastMessage("admin", "Подключился пользователь " + clientHandler.getUsername() + " (роль: " + clientHandler.getRole() + ")");
         clients.add(clientHandler);
     }
 
     public void unsubscribe(ClientHandler clientHandler) {
-        broadcastMessage("Admin", "Пользователь " + clientHandler.getUsername() + " покинул чат");
+        broadcastMessage("admin", "Пользователь " + clientHandler.getUsername() + " покинул чат");
         clients.remove(clientHandler);
     }
 
@@ -61,6 +61,42 @@ public class Server {
 
         if(!isFound) {
             from.sendMsg("Пользователь с ником '" + to + "' не найден в чате");
+        }
+    }
+
+    public void kickUser(ClientHandler admin, String usernameToKick) {
+        if (admin.getRole() != UserRole.ADMIN) {
+            admin.sendMsg("У вас не достаточно прав для удаления пользователей из чата");
+            return;
+        }
+
+        if (usernameToKick.equals(admin.getUsername())) {
+            admin.sendMsg("Вы не можете удалить самого себя из чата");
+            return;
+        }
+
+        ClientHandler targetClient = null;
+        for (ClientHandler client : clients) {
+            if (client.getUsername().equals(usernameToKick)) {
+                targetClient = client;
+                break;
+            }
+        }
+
+        if (targetClient == null) {
+            admin.sendMsg("Пользователь с ником '" + usernameToKick + "' не найден в чате");
+            return;
+        }
+
+        broadcastMessage("Admin", "Пользователь " + usernameToKick + " был удален из чата администратором " + admin.getUsername());
+
+        targetClient.sendMsg("Вы были удалены из чата администратором " + admin.getUsername());
+        targetClient.sendMsg("/exitok");
+
+        try {
+            targetClient.disconnect();
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
