@@ -91,18 +91,15 @@ public class ClientHandler {
                                     server.sendPrivateMsg(this, nickname, privateMessage);
                                 }
                             } else if(message.startsWith("/kick ")) {
-                                if (role == UserRole.ADMIN) {
-                                    String[] parts = message.split(" ", 2);
+                                String[] parts = message.split(" ", 2);
 
-                                    if (parts.length == 2) {
-                                        String usernameToKick = parts[1];
-                                        server.kickUser(this, usernameToKick);
-                                    } else {
-                                        sendMsg("Выполнена команда: /kick username");
-                                    }
-                                } else {
-                                    sendMsg("У вас не достаточно прав для использования этой команды");
+                                if(parts.length != 2) {
+                                    sendMsg(ConsoleColors.YELLOW + "Неверный формат команды /kick" + ConsoleColors.RESET);
+                                    continue;
                                 }
+
+                                String usernameToKick = parts[1];
+                                server.kickUser(this, usernameToKick);
                             }
                         } else {
                             server.broadcastMessage(username, message);
