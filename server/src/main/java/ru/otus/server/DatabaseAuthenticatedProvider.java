@@ -9,6 +9,11 @@ public class DatabaseAuthenticatedProvider implements AuthenticatedProvider {
     private String user;
     private String password;
 
+    private static final String CHECK_ADMIN_QUERY = "SELECT COUNT(*) FROM users WHERE login = 'admin'";
+    private static final String INSERT_ADMIN_QUERY = "INSERT INTO users (login, password, username, role) VALUES ('admin', 'admin', 'admin', 'ADMIN')";
+    private static final String AUTHENTICATE_QUERY = "SELECT username, role FROM users WHERE login = ? AND password = ?";
+    private static final String REGISTER_QUERY = "INSERT INTO users (login, password, username, role) VALUES (?, ?, ?, 'USER')";
+
     public DatabaseAuthenticatedProvider(Server server, String url, String user, String password) {
         this.server = server;
         this.url = url;
@@ -34,12 +39,10 @@ public class DatabaseAuthenticatedProvider implements AuthenticatedProvider {
 
     private void createAdmin() {
         try (Statement stmt = connection.createStatement()) {
-            String checkAdmin = "SELECT COUNT(*) FROM users WHERE login = 'admin'";
-            ResultSet rs = stmt.executeQuery(checkAdmin);
+            ResultSet rs = stmt.executeQuery(CHECK_ADMIN_QUERY);
 
             if (rs.next() && rs.getInt(1) == 0) {
-                String insertAdmin = "INSERT INTO users (login, password, username, role) VALUES ('admin', 'admin', 'admin', 'ADMIN')";
-                stmt.execute(insertAdmin);
+                stmt.execute(INSERT_ADMIN_QUERY);
                 System.out.println("Создан пользователь администратор");
             }
         } catch (SQLException e) {
@@ -49,9 +52,7 @@ public class DatabaseAuthenticatedProvider implements AuthenticatedProvider {
 
     @Override
     public boolean authenticate(ClientHandler clientHandler, String login, String password) {
-        String query = "SELECT username, role FROM users WHERE login = ? AND password = ?";
-
-        try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+        try (PreparedStatement pstmt = connection.prepareStatement(AUTHENTICATE_QUERY)) {
             pstmt.setString(1, login);
             pstmt.setString(2, password);
 
@@ -86,24 +87,11 @@ public class DatabaseAuthenticatedProvider implements AuthenticatedProvider {
 
     @Override
     public boolean register(ClientHandler clientHandler, String login, String password, String username) {
-        if (login.trim().length() < 3) {
-            clientHandler.sendMsg("Логин должен состоять из 3+ символов");
+        if (!validateData(clientHandler, login, password, username)) {
             return false;
         }
 
-        if (username.trim().length() < 3) {
-            clientHandler.sendMsg("Имя пользователя должна состоять из 3+ символов");
-            return false;
-        }
-
-        if (password.trim().length() < 3) {
-            clientHandler.sendMsg("Пароль должен состоять из 3+ символов");
-            return false;
-        }
-
-        String query = "INSERT INTO users (login, password, username, role) VALUES (?, ?, ?, 'USER')";
-
-        try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+        try (PreparedStatement pstmt = connection.prepareStatement(REGISTER_QUERY)) {
             pstmt.setString(1, login);
             pstmt.setString(2, password);
             pstmt.setString(3, username);
@@ -122,5 +110,24 @@ public class DatabaseAuthenticatedProvider implements AuthenticatedProvider {
 
             return false;
         }
+    }
+
+    private boolean validateData(ClientHandler clientHandler, String login, String password, String username) {
+        if (login.trim().length() < 3) {
+            clientHandler.sendMsg("Логин должен состоять из 3+ символов");
+            return false;
+        }
+
+        if (username.trim().length() < 3) {
+            clientHandler.sendMsg("Имя пользователя должна состоять из 3+ символов");
+            return false;
+        }
+
+        if (password.trim().length() < 3) {
+            clientHandler.sendMsg("Пароль должен состоять из 3+ символов");
+            return false;
+        }
+
+        return true;
     }
 }
