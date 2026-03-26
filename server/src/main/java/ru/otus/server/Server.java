@@ -11,15 +11,17 @@ public class Server {
     private List<ClientHandler> clients;
     private AuthenticatedProvider authenticatedProvider;
 
-    public Server(int port) {
+    public Server(int port, String url, String user, String password) {
         this.port = port;
         this.clients = new CopyOnWriteArrayList<>();
-        this.authenticatedProvider = new InMemoryAuthenticatedProvider(this);
+        this.authenticatedProvider = new DatabaseAuthenticatedProvider(this, url, user, password);
     }
 
     public void start() {
         try(ServerSocket serverSocket = new ServerSocket(port)) {
-            System.out.println("Server started. Port: " + port);
+            System.out.println("Сервер успешно запущен на порту: " + port);
+
+            authenticatedProvider.initialize();
 
             while (true) {
                 Socket socket = serverSocket.accept();
@@ -88,7 +90,7 @@ public class Server {
             return;
         }
 
-        broadcastMessage("Admin", "Пользователь " + usernameToKick + " был удален из чата администратором " + admin.getUsername());
+        broadcastMessage("admin", "Пользователь " + usernameToKick + " был удален из чата администратором " + admin.getUsername());
 
         targetClient.sendMsg("Вы были удалены из чата администратором " + admin.getUsername());
         targetClient.sendMsg("/exitok");

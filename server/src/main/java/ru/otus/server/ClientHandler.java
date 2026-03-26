@@ -109,6 +109,10 @@ public class ClientHandler {
             } catch (IOException e) {
                 e.printStackTrace();
             } finally {
+                if (username != null) {
+                    server.unsubscribe(this);
+                }
+
                 disconnect();
             }
         }).start();
